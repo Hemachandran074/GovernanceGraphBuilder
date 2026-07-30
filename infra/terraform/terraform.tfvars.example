@@ -1,0 +1,27 @@
+# Copy to terraform.tfvars and fill in. Do NOT commit the real file.
+
+aws_region   = "us-east-1"
+project_name = "ggb"
+environment  = "prod"
+
+# Neo4j (e.g. a Neo4j Aura instance)
+neo4j_uri      = "neo4j+s://xxxxxxxx.databases.neo4j.io"
+neo4j_username = "neo4j"
+neo4j_password = "change-me"
+
+# Backend image tag in ECR (push before/after apply; service stabilizes once present)
+image_tag = "latest"
+
+# LLM (Bedrock uses the ECS task role — no API key needed)
+llm_provider     = "bedrock"
+bedrock_model_id = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+
+# Restrict to the CloudFront URL after the first apply for production.
+cors_origins = "*"
+
+# Optional: ACM cert ARN to enable HTTPS on the ALB (must be in aws_region)
+# acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxx"
+
+desired_count = 2
+min_capacity  = 2
+max_capacity  = 6

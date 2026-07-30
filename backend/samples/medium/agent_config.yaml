@@ -1,0 +1,104 @@
+# Medium bundle: three agents, a shared model (gpt-4o), a shared tool
+# (crm-lookup), one policy governing two agents, and one agent intentionally
+# left policy-free (Triage Bot) to exercise the orphan query.
+agents:
+  - id: agent-support
+    name: Support Bot
+    description: Handles customer support tickets.
+    version: 2.1.0
+    environment: production
+    status: active
+    owner:
+      id: user-alice
+      name: Alice
+      email: alice@example.com
+      role: owner
+      team: support
+    model:
+      id: model-gpt4o
+      name: gpt-4o
+      provider: openai
+      version: 2024-08-06
+      modality: text
+    tools:
+      - id: tool-crm-lookup
+        name: crm-lookup
+        type: function
+        scopes: [crm:read]
+        reads_from: [ds-crm]
+      - id: tool-email-send
+        name: email-send
+        type: api
+        endpoint: https://api.mail.example.com
+        scopes: [email:send]
+    data_sources:
+      - id: ds-crm
+        name: crm-db
+        type: db
+        classification: pii
+    policies:
+      - id: policy-data
+        name: Data Governance Policy
+
+  - id: agent-sales
+    name: Sales Bot
+    description: Generates quotes and manages the sales pipeline.
+    version: 1.4.0
+    environment: production
+    status: active
+    owner:
+      id: user-bob
+      name: Bob
+      email: bob@example.com
+      role: owner
+      team: sales
+    model:
+      id: model-gpt4o
+      name: gpt-4o
+      provider: openai
+      version: 2024-08-06
+      modality: text
+    tools:
+      - id: tool-crm-lookup
+        name: crm-lookup
+        type: function
+        scopes: [crm:read]
+        reads_from: [ds-crm]
+      - id: tool-quote-gen
+        name: quote-gen
+        type: function
+        scopes: [quotes:write]
+        reads_from: [ds-quotes]
+    data_sources:
+      - id: ds-quotes
+        name: quotes-db
+        type: db
+        classification: internal
+    policies:
+      - id: policy-data
+        name: Data Governance Policy
+
+  - id: agent-triage
+    name: Triage Bot
+    description: Classifies incoming tickets. Intentionally has no policy.
+    version: 0.5.0
+    environment: staging
+    status: active
+    owner:
+      id: user-carol
+      name: Carol
+      email: carol@example.com
+      role: engineer
+      team: support
+    model:
+      id: model-gpt4o-mini
+      name: gpt-4o-mini
+      provider: openai
+      version: 2024-07-18
+      modality: text
+    tools:
+      - id: tool-ticket-classify
+        name: ticket-classify
+        type: function
+        scopes: [tickets:read]
+    # No policies -> Triage Bot is the orphan agent.

@@ -1,0 +1,37 @@
+# ===== Secrets / environment =====
+.env
+.env.*
+!.env.example
+
+# ===== Python (backend) =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ===== Node (frontend) =====
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# ===== Terraform (infra) =====
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+
+# ===== OS / editor =====
+.DS_Store
+Thumbs.db
+*.swp
+.idea/

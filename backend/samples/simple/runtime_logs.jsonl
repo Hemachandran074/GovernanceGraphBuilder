@@ -1,0 +1,4 @@
+{"timestamp": "2026-07-01T09:00:00Z", "agent_id": "agent-assistant", "agent_name": "Assistant", "event": "model_invoke", "model": "model-gpt4o-mini", "model_name": "gpt-4o-mini"}
+{"timestamp": "2026-07-01T09:00:01Z", "agent_id": "agent-assistant", "agent_name": "Assistant", "event": "tool_call", "tool": "tool-calculator", "tool_name": "calculator"}
+{"timestamp": "2026-07-01T09:00:02Z", "agent_id": "agent-assistant", "agent_name": "Assistant", "event": "data_read", "data_source": "ds-kb", "data_source_name": "knowledge-base"}
+{"timestamp": "2026-07-01T09:05:00Z", "agent_id": "agent-assistant", "agent_name": "Assistant", "event": "model_invoke", "model": "model-gpt4o-mini", "model_name": "gpt-4o-mini"}

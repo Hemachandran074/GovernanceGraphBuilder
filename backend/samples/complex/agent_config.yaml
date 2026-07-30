@@ -1,0 +1,148 @@
+# Complex bundle: four agents, multiple models, transitive data access via
+# tools, overlapping policies (an agent with two policies; a policy governing
+# two agents), a non-owning USES relationship, and an orphan agent.
+# Runtime logs additionally introduce config/observation drift.
+agents:
+  - id: agent-analyst
+    name: Data Analyst
+    description: Runs analytical queries over the warehouse.
+    version: 3.0.0
+    environment: production
+    status: active
+    owner:
+      id: user-alice
+      name: Alice
+      email: alice@example.com
+      role: owner
+      team: data
+    users:
+      - id: user-dave
+        name: Dave
+        email: dave@example.com
+        role: analyst
+        team: data
+        relation: USES
+    model:
+      id: model-gpt4o
+      name: gpt-4o
+      provider: openai
+      version: 2024-08-06
+      modality: text
+    tools:
+      - id: tool-sql-runner
+        name: sql-runner
+        type: function
+        scopes: [warehouse:read]
+        reads_from: [ds-warehouse]
+    data_sources:
+      - id: ds-warehouse
+        name: warehouse-db
+        type: db
+        classification: internal
+      - id: ds-finance
+        name: finance-db
+        type: db
+        classification: secret
+    policies:
+      - id: policy-data-gov
+        name: Data Governance Policy
+
+  - id: agent-support
+    name: Support Agent
+    description: Customer support with CRM access.
+    version: 2.2.0
+    environment: production
+    status: active
+    owner:
+      id: user-bob
+      name: Bob
+      email: bob@example.com
+      role: owner
+      team: support
+    model:
+      id: model-gpt4o
+      name: gpt-4o
+      provider: openai
+      version: 2024-08-06
+      modality: text
+    tools:
+      - id: tool-crm-lookup
+        name: crm-lookup
+        type: function
+        scopes: [crm:read]
+        reads_from: [ds-crm]
+    policies:
+      - id: policy-data-gov
+        name: Data Governance Policy
+      - id: policy-pii
+        name: PII Protection Policy
+
+  - id: agent-marketing
+    name: Marketing Agent
+    description: Runs outbound campaigns.
+    version: 1.1.0
+    environment: production
+    status: active
+    owner:
+      id: user-bob
+      name: Bob
+      email: bob@example.com
+      role: owner
+      team: support
+    model:
+      id: model-claude
+      name: claude-3-5-sonnet
+      provider: anthropic
+      version: "20241022"
+      modality: text
+    tools:
+      - id: tool-crm-lookup
+        name: crm-lookup
+        type: function
+        scopes: [crm:read]
+        reads_from: [ds-crm]
+      - id: tool-email-send
+        name: email-send
+        type: api
+        endpoint: https://api.mail.example.com
+        scopes: [email:send]
+    data_sources:
+      - id: ds-crm
+        name: crm-db
+        type: db
+        classification: pii
+    policies:
+      - id: policy-pii
+        name: PII Protection Policy
+
+  - id: agent-experimental
+    name: Experimental Agent
+    description: Sandbox agent with no governing policy (orphan).
+    version: 0.1.0
+    environment: development
+    status: active
+    owner:
+      id: user-carol
+      name: Carol
+      email: carol@example.com
+      role: engineer
+      team: research
+    model:
+      id: model-gpt4o-mini
+      name: gpt-4o-mini
+      provider: openai
+      version: 2024-07-18
+      modality: text
+    tools:
+      - id: tool-web-scraper
+        name: web-scraper
+        type: api
+        endpoint: https://scrape.example.com
+        scopes: [web:read]
+        reads_from: [ds-web]
+    data_sources:
+      - id: ds-web
+        name: web-data
+        type: api
+        classification: public
+    # No policies -> Experimental Agent is the orphan.

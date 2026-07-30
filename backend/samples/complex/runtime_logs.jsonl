@@ -1,0 +1,14 @@
+{"timestamp": "2026-07-03T08:00:00Z", "agent_id": "agent-analyst", "agent_name": "Data Analyst", "event": "model_invoke", "model": "model-gpt4o", "model_name": "gpt-4o"}
+{"timestamp": "2026-07-03T08:00:01Z", "agent_id": "agent-analyst", "agent_name": "Data Analyst", "event": "tool_call", "tool": "tool-sql-runner", "tool_name": "sql-runner"}
+{"timestamp": "2026-07-03T08:00:02Z", "agent_id": "agent-analyst", "agent_name": "Data Analyst", "event": "data_read", "data_source": "ds-warehouse", "data_source_name": "warehouse-db"}
+{"timestamp": "2026-07-03T08:00:03Z", "agent_id": "agent-analyst", "agent_name": "Data Analyst", "event": "data_read", "data_source": "ds-finance", "data_source_name": "finance-db"}
+{"timestamp": "2026-07-03T09:00:00Z", "agent_id": "agent-support", "agent_name": "Support Agent", "event": "model_invoke", "model": "model-gpt4o", "model_name": "gpt-4o"}
+{"timestamp": "2026-07-03T09:00:01Z", "agent_id": "agent-support", "agent_name": "Support Agent", "event": "tool_call", "tool": "tool-crm-lookup", "tool_name": "crm-lookup"}
+{"timestamp": "2026-07-03T09:15:00Z", "agent_id": "agent-support", "agent_name": "Support Agent", "event": "tool_call", "tool": "tool-shadow-export", "tool_name": "shadow-export"}
+{"timestamp": "2026-07-03T09:15:01Z", "agent_id": "agent-support", "agent_name": "Support Agent", "event": "tool_call", "tool": "tool-shadow-export", "tool_name": "shadow-export"}
+{"timestamp": "2026-07-03T10:00:00Z", "agent_id": "agent-marketing", "agent_name": "Marketing Agent", "event": "model_invoke", "model": "model-claude", "model_name": "claude-3-5-sonnet"}
+{"timestamp": "2026-07-03T10:00:01Z", "agent_id": "agent-marketing", "agent_name": "Marketing Agent", "event": "tool_call", "tool": "tool-crm-lookup", "tool_name": "crm-lookup"}
+{"timestamp": "2026-07-03T10:00:02Z", "agent_id": "agent-marketing", "agent_name": "Marketing Agent", "event": "tool_call", "tool": "tool-email-send", "tool_name": "email-send"}
+{"timestamp": "2026-07-03T11:00:00Z", "agent_id": "agent-experimental", "agent_name": "Experimental Agent", "event": "model_invoke", "model": "model-gpt4o-mini", "model_name": "gpt-4o-mini"}
+{"timestamp": "2026-07-03T11:00:01Z", "agent_id": "agent-experimental", "agent_name": "Experimental Agent", "event": "tool_call", "tool": "tool-web-scraper", "tool_name": "web-scraper"}
+{"timestamp": "2026-07-03T11:00:02Z", "agent_id": "agent-experimental", "agent_name": "Experimental Agent", "event": "data_read", "data_source": "ds-web", "data_source_name": "web-data"}

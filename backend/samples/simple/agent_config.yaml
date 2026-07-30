@@ -1,0 +1,38 @@
+# Simple bundle: a single agent with one of each node type.
+agent:
+  id: agent-assistant
+  name: Assistant
+  description: General-purpose helper agent.
+  version: 1.0.0
+  environment: production
+  status: active
+
+owner:
+  id: user-dana
+  name: Dana
+  email: dana@example.com
+  role: owner
+  team: platform
+
+model:
+  id: model-gpt4o-mini
+  name: gpt-4o-mini
+  provider: openai
+  version: 2024-07-18
+  modality: text
+
+tools:
+  - id: tool-calculator
+    name: calculator
+    type: function
+    scopes: [compute]
+
+data_sources:
+  - id: ds-kb
+    name: knowledge-base
+    type: vector
+    classification: internal
+
+policies:
+  - id: policy-usage
+    name: Usage Policy

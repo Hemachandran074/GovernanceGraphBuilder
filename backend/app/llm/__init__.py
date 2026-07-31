@@ -6,6 +6,7 @@ always available as an offline fallback so the system works without credentials.
 """
 
 from app.llm.provider import (
+    CypherQuery,
     ExtractedPolicy,
     LLMProvider,
     PolicyExtraction,
@@ -13,6 +14,7 @@ from app.llm.provider import (
 )
 
 __all__ = [
+    "CypherQuery",
     "ExtractedPolicy",
     "LLMProvider",
     "PolicyExtraction",

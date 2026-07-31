@@ -30,6 +30,13 @@ class PolicyExtraction(BaseModel):
     policies: list[ExtractedPolicy] = Field(default_factory=list)
 
 
+class CypherQuery(BaseModel):
+    """A read-only Cypher statement generated from a natural-language question."""
+
+    cypher: str = Field(..., description="A single read-only Cypher statement.")
+    explanation: str = Field(default="", description="Plain-language description of what it returns.")
+
+
 # --- Provider interface ------------------------------------------------------
 
 class LLMProvider(ABC):
@@ -55,6 +62,15 @@ class LLMProvider(ABC):
         known_entities: list[str] | None = None,
     ) -> PolicyExtraction:
         """Parse ``document_text`` into structured policies."""
+
+    def generate_cypher(self, question: str, *, schema: str) -> CypherQuery:
+        """Translate a natural-language question into a read-only Cypher query.
+
+        Optional capability: only generative providers implement it. The
+        deterministic heuristic cannot author Cypher, so it inherits this default
+        which signals "unsupported" to the caller (handled as a 503, not a 500).
+        """
+        raise NotImplementedError(f"Provider '{self.name}' does not support Cypher generation.")
 
 
 def _build_prompt(
@@ -95,12 +111,14 @@ def get_llm_provider(settings=None) -> LLMProvider:
     from app.llm.anthropic_provider import AnthropicProvider
     from app.llm.bedrock import BedrockProvider
     from app.llm.heuristic import HeuristicPolicyExtractor
+    from app.llm.llm_provider import LLMChatProvider
     from app.llm.openai_provider import OpenAIProvider
 
     settings = settings or get_settings()
     choice = (settings.llm_provider or "auto").lower()
 
     builders = {
+        "llm": lambda: LLMChatProvider(settings),
         "bedrock": lambda: BedrockProvider(settings),
         "openai": lambda: OpenAIProvider(settings),
         "anthropic": lambda: AnthropicProvider(settings),
@@ -108,7 +126,7 @@ def get_llm_provider(settings=None) -> LLMProvider:
     }
 
     if choice == "auto":
-        for key in ("bedrock", "openai", "anthropic"):
+        for key in ("llm", "bedrock", "openai", "anthropic"):
             provider = builders[key]()
             if provider.is_available():
                 logger.info("Selected LLM provider", extra={"provider": provider.name})

@@ -57,6 +57,16 @@ export interface IngestResponse {
   result: Record<string, unknown>
 }
 
+export interface NlQueryResponse {
+  question: string
+  cypher: string
+  explanation: string
+  provider: string
+  node_count: number
+  edge_count: number
+  snapshot: GraphSnapshot
+}
+
 export interface BundleListResponse {
   bundles: string[]
 }

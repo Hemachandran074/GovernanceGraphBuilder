@@ -11,6 +11,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.models.graph import GraphSnapshot
+
 # --- Ingestion requests ------------------------------------------------------
 
 class AgentConfigIngestRequest(BaseModel):
@@ -69,3 +71,21 @@ class BundleListResponse(BaseModel):
 class MessageResponse(BaseModel):
     status: str = "ok"
     message: str
+
+
+# --- Natural-language query --------------------------------------------------
+
+class NlQueryRequest(BaseModel):
+    question: str = Field(
+        ..., min_length=3, description="Natural-language question about the graph."
+    )
+
+
+class NlQueryResponse(BaseModel):
+    question: str
+    cypher: str = Field(..., description="The read-only Cypher that was executed.")
+    explanation: str = ""
+    provider: str
+    node_count: int
+    edge_count: int
+    snapshot: GraphSnapshot

@@ -10,6 +10,7 @@ import type {
   GraphSnapshot,
   GraphStats,
   IngestResponse,
+  NlQueryResponse,
   QueryResponse,
 } from './types'
 
@@ -73,6 +74,13 @@ export const api = {
       { method: 'POST', body: form, headers: {} },
     )
   },
+
+  // --- Natural-language query (LLM -> read-only Cypher -> subgraph) ---
+  nlQuery: (question: string) =>
+    request<NlQueryResponse>('/graph/nl-query', {
+      method: 'POST',
+      body: JSON.stringify({ question }),
+    }),
 
   // --- Governance queries ---
   toolsForAgent: (name: string) => request<QueryResponse>(`/agents/${encode(name)}/tools`),

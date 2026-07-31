@@ -3,6 +3,7 @@ import { api, ApiError } from './api/client'
 import type { GraphNode, GraphSnapshot, GraphStats } from './api/types'
 import { IngestPanel } from './components/IngestPanel'
 import { Legend } from './components/Legend'
+import { NlQueryPanel } from './components/NlQueryPanel'
 import { QueryPanel } from './components/QueryPanel'
 import { StatsBar } from './components/StatsBar'
 import './App.css'
@@ -80,6 +81,14 @@ function App() {
     [graph],
   )
 
+  // Replace the view with the subgraph returned by a natural-language query.
+  // The Refresh button restores the full graph.
+  const handleNlGraph = useCallback((snapshot: GraphSnapshot) => {
+    setGraph(snapshot)
+    setHighlighted(new Set())
+    setSelected(null)
+  }, [])
+
   const isEmpty = graph.nodes.length === 0
 
   return (
@@ -95,6 +104,7 @@ function App() {
       <div className="app-body">
         <aside className="sidebar">
           <IngestPanel onIngested={refresh} />
+          <NlQueryPanel onGraph={handleNlGraph} />
           <QueryPanel onHighlight={handleHighlight} refreshKey={refreshKey} />
           <Legend />
           {selected && (

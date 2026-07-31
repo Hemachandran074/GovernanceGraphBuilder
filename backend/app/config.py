@@ -43,12 +43,16 @@ class Settings(BaseSettings):
     # Seconds to wait when verifying connectivity for readiness checks.
     neo4j_connection_timeout: float = 5.0
 
-    # --- LLM (policy-document parsing) ---
-    # auto  -> use the first configured real provider, else the offline heuristic
-    # bedrock | openai | anthropic | heuristic -> force a specific provider
+    # --- LLM (policy parsing + natural-language graph queries) ---
+    # auto -> first configured real provider, else the offline heuristic
+    # llm | bedrock | openai | anthropic | heuristic -> force a specific provider
     llm_provider: str = "auto"
     llm_max_tokens: int = 2000
     llm_temperature: float = 0.0
+    # Generic configurable LLM (OpenAI-compatible chat API; used for NL->Cypher
+    # and policy extraction). Provide a key and model for your chosen endpoint.
+    llm_api_key: str | None = None
+    llm_model: str = "llama-3.3-70b-versatile"
     # AWS Bedrock (primary real provider)
     aws_region: str = "us-east-1"
     bedrock_model_id: str = "anthropic.claude-3-5-sonnet-20241022-v2:0"

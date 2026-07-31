@@ -23,7 +23,6 @@ export function StatsBar({ stats }: StatsBarProps) {
       <span className={`pill ${stats.drift_edges > 0 ? 'warn' : ''}`}>
         drift: <strong>{stats.drift_edges}</strong>
       </span>
-      <span className="pill accent">LLM: <strong>{stats.llm_provider}</strong></span>
     </div>
   )
 }

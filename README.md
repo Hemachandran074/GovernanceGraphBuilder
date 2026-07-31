@@ -364,3 +364,5 @@ All requirements from the problem statement are implemented and verified against
 - **Orphan-agent query** correctly flags the intentionally policy-free agent (and only it).
 - **Correct updates** when an agent config changes — stale edges are reconciled away.
 - **Bonus:** the **blast-radius query** returns the affected agents, users, and exposed data sources for a compromised tool.
+
+See [`plan.md`](plan.md) for the full engineering plan and [`tasks.md`](tasks.md) for the phased implementation tracker.

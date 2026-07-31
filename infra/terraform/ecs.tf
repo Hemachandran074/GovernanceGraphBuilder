@@ -93,6 +93,7 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "CORS_ORIGINS", value = var.cors_origins },
         { name = "NEO4J_DATABASE", value = var.neo4j_database },
         { name = "LLM_PROVIDER", value = var.llm_provider },
+        { name = "LLM_MODEL", value = var.llm_model },
         { name = "AWS_REGION", value = var.aws_region },
         { name = "BEDROCK_MODEL_ID", value = var.bedrock_model_id },
       ]
@@ -100,6 +101,7 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "NEO4J_URI", valueFrom = "${aws_secretsmanager_secret.neo4j.arn}:uri::" },
         { name = "NEO4J_USER", valueFrom = "${aws_secretsmanager_secret.neo4j.arn}:username::" },
         { name = "NEO4J_PASSWORD", valueFrom = "${aws_secretsmanager_secret.neo4j.arn}:password::" },
+        { name = "LLM_API_KEY", valueFrom = "${aws_secretsmanager_secret.llm.arn}:api_key::" },
       ]
       logConfiguration = {
         logDriver = "awslogs"

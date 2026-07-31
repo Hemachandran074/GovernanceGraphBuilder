@@ -12,3 +12,15 @@ resource "aws_secretsmanager_secret_version" "neo4j" {
     password = var.neo4j_password
   })
 }
+
+# API key for the generic (OpenAI-compatible) LLM provider, injected into the
+# task as LLM_API_KEY. Kept out of the task definition env for security.
+resource "aws_secretsmanager_secret" "llm" {
+  name        = "${local.name}/llm"
+  description = "LLM API key for ${local.name}."
+}
+
+resource "aws_secretsmanager_secret_version" "llm" {
+  secret_id     = aws_secretsmanager_secret.llm.id
+  secret_string = jsonencode({ api_key = var.llm_api_key })
+}

@@ -111,7 +111,7 @@ variable "neo4j_database" {
 
 # --- LLM ---
 variable "llm_provider" {
-  description = "LLM provider for policy parsing (bedrock recommended in AWS)."
+  description = "LLM provider: llm (generic OpenAI-compatible) | bedrock | openai | anthropic | heuristic | auto."
   type        = string
   default     = "bedrock"
 }
@@ -120,6 +120,19 @@ variable "bedrock_model_id" {
   description = "Bedrock model id (or inference profile id) for policy parsing."
   type        = string
   default     = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+}
+
+variable "llm_api_key" {
+  description = "API key for the generic LLM provider (used when llm_provider = llm). Empty falls back to the offline heuristic."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "llm_model" {
+  description = "Model id for the generic LLM provider (OpenAI-compatible)."
+  type        = string
+  default     = "llama-3.3-70b-versatile"
 }
 
 variable "log_retention_days" {

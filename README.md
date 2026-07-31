@@ -16,6 +16,7 @@ Modern AI agents are compositions: an LLM, an orchestration layer, a set of tool
 - [Getting Started](#getting-started)
 - [Sample Data](#sample-data)
 - [Governance Queries](#governance-queries)
+- [Natural-Language Queries](#natural-language-queries)
 - [API Reference](#api-reference)
 - [Ingestion Model](#ingestion-model)
 - [LLM Integration](#llm-integration)
@@ -35,6 +36,7 @@ Modern AI agents are compositions: an LLM, an orchestration layer, a set of tool
 - **Config/runtime drift detection** — relationships observed at runtime but never declared in config are surfaced automatically.
 - **Correct updates** — re-ingesting a changed agent config reconciles the graph, removing stale edges (and downgrading still-observed ones to drift rather than deleting them).
 - **Interactive visualization** — a React + Cytoscape UI that renders the graph, highlights query results, and drives ingestion.
+- **Natural-language queries** — ask a question in plain English; an LLM generates a *read-only* Cypher statement (statically validated and executed inside a read transaction) and the matching subgraph is rendered.
 - **Production-ready** — async API with structured logging, health/readiness probes, global error handling, autoscaling-ready containers, and full Terraform for AWS.
 
 ---
@@ -52,7 +54,7 @@ flowchart LR
     UI[React + Cytoscape UI] -->|REST| API
 ```
 
-The React UI calls the FastAPI service over REST. The API runs parameterized Cypher against Neo4j. Ingestion normalizes each of the three sources into the same node/edge model; the natural-language policy document is parsed by an LLM into structured policies before it reaches the graph.
+The React UI calls the FastAPI service over REST. The API runs parameterized Cypher against Neo4j. Ingestion normalizes each of the three sources into the same node/edge model; the natural-language policy document is parsed by an LLM into structured policies before it reaches the graph. The same LLM provider also powers natural-language queries, translating a question into a validated read-only Cypher statement (see [Natural-Language Queries](#natural-language-queries)).
 
 ---
 
@@ -89,10 +91,10 @@ An edge that is `observed` but not `declared` is **drift**. Data-source access i
 | Graph database | Neo4j (Neo4j 5.x locally via Docker; Neo4j Aura in the cloud) |
 | Backend | Python 3.12, FastAPI, async Neo4j driver, managed with `uv` |
 | App server | Gunicorn + Uvicorn workers (concurrent) |
-| LLM | AWS Bedrock (Claude) primary; OpenAI / Anthropic optional; deterministic heuristic fallback |
+| LLM | Generic OpenAI-compatible provider (natural-language → Cypher + policy parsing); AWS Bedrock / OpenAI / Anthropic optional; deterministic heuristic fallback |
 | Frontend | React 19 + TypeScript + Vite, Cytoscape for graph rendering |
-| Containers | Docker (backend uv image, frontend nginx image) |
-| Infrastructure | Terraform — ECR, VPC, ECS Fargate + ALB, S3 + CloudFront, Secrets Manager, IAM, CloudWatch |
+| Containers | Docker — unified image (React SPA built and served by FastAPI) |
+| Infrastructure | Terraform — ECR, VPC, ECS Fargate + ALB, Secrets Manager, IAM, CloudWatch |
 
 ---
 
@@ -108,17 +110,16 @@ Governance Graph Builder/
 │   │   ├── api/              health, ingest, query, graph routers + schemas
 │   │   ├── graph/            Neo4j client, schema, loader (+ reconciliation), queries, seed
 │   │   ├── ingestion/        agent_config, runtime_logs, policy_doc, pipeline
-│   │   ├── llm/              provider abstraction + bedrock/openai/anthropic/heuristic
+│   │   ├── llm/              provider abstraction, generic OpenAI-compatible `llm` provider, bedrock/openai/anthropic, heuristic, and NL→Cypher (schema + read-only safety)
 │   │   └── models/           Pydantic node/edge/graph models
 │   ├── samples/{simple,medium,complex}/   agent_config.yaml + runtime_logs.jsonl + policy.md
 │   └── Dockerfile
 ├── frontend/                 React + Vite + TypeScript UI
-│   ├── src/{api,components}/  typed client + GraphView / QueryPanel / IngestPanel / StatsBar
-│   ├── Dockerfile            multi-stage build -> nginx
-│   └── nginx.conf
+│   └── src/{api,components}/  typed client + GraphView / QueryPanel / NlQueryPanel / IngestPanel / StatsBar
 ├── infra/
 │   ├── docker-compose.yml    local Neo4j + backend
 │   └── terraform/            AWS infrastructure as code (+ its own README)
+├── test-files/               ready-to-upload sample files (json / yaml / md / txt)
 ├── plan.md                   engineering plan
 ├── tasks.md                  phased task tracker
 └── problem_statement.md
@@ -190,6 +191,19 @@ Three bundles of increasing complexity live in `backend/samples/`. Each contains
 | `medium` | Multiple agents, a shared model, one policy governing two agents, and **one intentionally policy-free (orphan) agent** |
 | `complex` | Transitive data access, overlapping policies (an agent with two policies), a non-owning user, an orphan agent, and **config/runtime drift** (a tool invoked at runtime but never declared) |
 
+### Upload fixtures
+
+`test-files/` holds four ready-to-upload files — one per format — that form one coherent scenario for exercising the **Ingest** panel (or the `/ingest/upload` API):
+
+| File | Upload as `kind` | Format |
+|------|------------------|--------|
+| `agent-config.json` | `agent-config` | JSON |
+| `agent-config.yaml` | `agent-config` | YAML (single-agent form) |
+| `runtime-logs.txt` | `runtime-logs` | JSONL |
+| `policy.md` | `policy` | Markdown |
+
+Upload the JSON with **reset** on, then the others, to build a graph with a shared model, transitive data access, an orphan agent, and runtime drift.
+
 ---
 
 ## Governance Queries
@@ -204,6 +218,26 @@ The four required queries (from the problem statement), plus the bonus and extra
 | Is there any agent with no policy attached? | `GET /agents/orphans` |
 | **Blast radius:** which agents/users/data are affected by a compromised tool? | `GET /tools/{name}/blast-radius` |
 | Where does runtime usage diverge from declared config? | `GET /graph/drift` |
+| **Ask in natural language** (LLM → read-only Cypher → subgraph) | `POST /graph/nl-query` |
+
+---
+
+## Natural-Language Queries
+
+Beyond the fixed governance queries, the UI includes an **Ask AI** box: type a question in plain English and the matching subgraph is rendered. The pipeline is deliberately safety-first:
+
+1. **Generate** — the configured LLM turns the question into a single Cypher statement, grounded by the fixed graph schema and instructed to return whole nodes and relationships.
+2. **Validate** — `ensure_read_only` rejects anything that is not a single read statement (no `CREATE` / `MERGE` / `DELETE` / `SET` / `REMOVE` / `DROP`, no `LOAD CSV`, no `db.` / `dbms.` / `apoc.` procedure calls, no stacked statements) and appends a `LIMIT`.
+3. **Execute** — the statement runs inside a **read transaction**, so any write that slips past validation is refused by the database itself (defense in depth). Relationships among the returned nodes are backfilled so the subgraph renders connected.
+4. **Return** — the response carries the executed Cypher (for transparency), a short explanation, the provider used, and the subgraph.
+
+This requires a generative provider (`LLM_PROVIDER=llm` with an API key); the offline heuristic cannot author Cypher, so the endpoint responds `503` in that case.
+
+```bash
+curl -X POST http://localhost:8000/graph/nl-query \
+  -H "Content-Type: application/json" \
+  -d '{"question":"Which agents can access the ledger database?"}'
+```
 
 ---
 
@@ -225,6 +259,7 @@ The four required queries (from the problem statement), plus the bonus and extra
 | GET | `/graph/entities/{label}` | List entities of a type (search + limit) |
 | GET | `/graph/neighbors/{name}` | Subgraph around a node |
 | GET | `/graph/drift` | Observed-but-undeclared relationships |
+| POST | `/graph/nl-query` | Natural-language question → LLM-generated read-only Cypher → matching subgraph |
 
 Full interactive documentation (OpenAPI/Swagger) is served at `/docs`.
 
@@ -246,13 +281,14 @@ Loading is idempotent (`MERGE`), so re-ingestion updates in place. Re-ingesting 
 
 ## LLM Integration
 
-Policy-document parsing goes through a provider abstraction with graceful fallback:
+Two capabilities use an LLM — **policy-document parsing** (natural language → structured policies) and **natural-language queries** (question → read-only Cypher). Both go through a single provider abstraction with graceful fallback:
 
-- **AWS Bedrock** (Claude via the Converse API) — the primary real provider. Credentials resolve from the standard AWS chain (environment, shared config, or the ECS task role in production), so no secrets live in code.
+- **Generic (`llm`)** — an OpenAI-compatible chat provider configured with `LLM_API_KEY` and `LLM_MODEL`. It powers natural-language → Cypher and policy extraction, and is the provider used in the deployed stack.
+- **AWS Bedrock** (Claude via the Converse API) — credentials resolve from the standard AWS chain (environment, shared config, or the ECS task role in production), so no secrets live in code.
 - **OpenAI / Anthropic** — optional direct providers (lazy-loaded SDKs).
-- **Heuristic** — a deterministic, offline extractor that parses the document structurally and grounds references against the known graph vocabulary. Always available, so the system runs fully locally with no credentials.
+- **Heuristic** — a deterministic, offline extractor that parses policy documents structurally and grounds references against the known graph vocabulary. Always available, so ingestion runs fully locally with no credentials. It cannot author Cypher, so natural-language queries require a generative provider.
 
-The active provider is selected by `LLM_PROVIDER` (default `auto`: use the first available real provider, otherwise the heuristic). The current provider is reported at `GET /graph/stats`.
+The active provider is selected by `LLM_PROVIDER` (default `auto`: the first available real provider, otherwise the heuristic). Policy ingestion never hard-fails on an LLM error — it falls back to the heuristic and reports the fallback reason in the response. The current provider is reported at `GET /graph/stats`.
 
 ---
 
@@ -268,7 +304,9 @@ Backend settings come from environment variables (or a local `.env`; see `backen
 | `NEO4J_URI` | `bolt://localhost:7687` | Neo4j Bolt URI |
 | `NEO4J_USER` / `NEO4J_PASSWORD` | `neo4j` / `localdevpassword` | Neo4j credentials |
 | `NEO4J_DATABASE` | `neo4j` | Neo4j database name |
-| `LLM_PROVIDER` | `auto` | `auto` \| `bedrock` \| `openai` \| `anthropic` \| `heuristic` |
+| `LLM_PROVIDER` | `auto` | `auto` \| `llm` \| `bedrock` \| `openai` \| `anthropic` \| `heuristic` |
+| `LLM_API_KEY` | unset | API key for the generic OpenAI-compatible provider (`llm`) |
+| `LLM_MODEL` | `llama-3.3-70b-versatile` | Model id for the generic provider |
 | `AWS_REGION` | `us-east-1` | Region for Bedrock |
 | `BEDROCK_MODEL_ID` | Claude 3.5 Sonnet | Bedrock model / inference profile |
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | unset | Optional direct-provider keys |
@@ -299,8 +337,7 @@ serves the built React SPA — so the UI and API share a single origin and URL
 - **ECR** for the unified image
 - **VPC** (public + private subnets, NAT)
 - **ECS Fargate + ALB** serving both the UI and API, with CPU-based autoscaling
-- **Secrets Manager** for Neo4j credentials, **IAM** roles (execution + Bedrock task role), and **CloudWatch Logs**
-- **S3 + CloudFront** — *optional* separate frontend CDN (`enable_frontend_cdn`, off by default)
+- **Secrets Manager** for Neo4j credentials **and the LLM API key**, **IAM** roles (execution + Bedrock task role), and **CloudWatch Logs**
 
 The unified image is built from the repo root (`docker build -f backend/Dockerfile .`);
 the frontend is compiled in a Node stage and served by FastAPI at `/`.
@@ -313,7 +350,6 @@ flowchart TB
     ECS --> AURA[(Neo4j Aura)]
     ECS --> BR[AWS Bedrock]
     ECS --> SM[[Secrets Manager]]
-    S3[S3] --> CF[CloudFront] 
 ```
 
 The graph database is managed **Neo4j Aura**, provisioned separately and passed in as variables. Step-by-step deployment instructions (init, apply, image push, frontend sync) are in [`infra/terraform/README.md`](infra/terraform/README.md).

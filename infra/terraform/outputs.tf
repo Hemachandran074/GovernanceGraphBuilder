@@ -13,19 +13,26 @@ output "alb_dns_name" {
   value       = aws_lb.this.dns_name
 }
 
+# The frontend is served by the API container (Strategy 1); these are populated
+# only when enable_frontend_cdn = true.
 output "frontend_bucket" {
-  description = "S3 bucket for the built frontend (aws s3 sync target)."
-  value       = aws_s3_bucket.frontend.bucket
+  description = "S3 bucket for the built frontend (only when enable_frontend_cdn = true)."
+  value       = try(aws_s3_bucket.frontend[0].bucket, null)
 }
 
 output "frontend_url" {
-  description = "Public URL of the frontend (CloudFront)."
-  value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+  description = "Public URL of the frontend via CloudFront (only when enable_frontend_cdn = true)."
+  value       = try("https://${aws_cloudfront_distribution.frontend[0].domain_name}", null)
 }
 
 output "cloudfront_distribution_id" {
-  description = "CloudFront distribution id (for cache invalidation)."
-  value       = aws_cloudfront_distribution.frontend.id
+  description = "CloudFront distribution id (only when enable_frontend_cdn = true)."
+  value       = try(aws_cloudfront_distribution.frontend[0].id, null)
+}
+
+output "app_url" {
+  description = "Public URL serving both the UI and API (Strategy 1, via the ALB)."
+  value       = var.acm_certificate_arn == "" ? "http://${aws_lb.this.dns_name}" : "https://${aws_lb.this.dns_name}"
 }
 
 output "neo4j_secret_arn" {

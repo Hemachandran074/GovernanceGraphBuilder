@@ -13,7 +13,11 @@ import type {
   QueryResponse,
 } from './types'
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8000'
+// In the unified deployment the API is same-origin, so the build sets
+// VITE_API_BASE_URL="" and requests use relative paths. When the variable is
+// unset (local `npm run dev`), fall back to the dev backend on port 8000.
+const configured = import.meta.env.VITE_API_BASE_URL as string | undefined
+const BASE_URL = configured === undefined ? 'http://localhost:8000' : configured
 
 export class ApiError extends Error {
   status: number

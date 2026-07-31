@@ -28,8 +28,9 @@ services:
 
   backend:
     build:
-      context: ../backend
-      dockerfile: Dockerfile
+      # Repo root context so the image can build the frontend too (Strategy 1).
+      context: ..
+      dockerfile: backend/Dockerfile
     container_name: ggb-backend
     environment:
       ENVIRONMENT: development

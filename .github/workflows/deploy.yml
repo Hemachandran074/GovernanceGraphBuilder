@@ -1,0 +1,70 @@
+name: Deploy
+
+# Manual deploy to AWS. Strategy 1 (unified container): the image bundles the
+# React SPA and serves it from FastAPI, so one build/push + ECS roll ships both
+# the UI and the API. No separate frontend hosting step.
+#
+# Required repository secrets:
+#   AWS_ACCESS_KEY_ID       deploy IAM user's access key
+#   AWS_SECRET_ACCESS_KEY   deploy IAM user's secret
+#
+# Optional repository variables:
+#   AWS_REGION (default us-east-1), ECR_REPOSITORY (default ggb-backend),
+#   ECS_CLUSTER (default ggb-prod), ECS_SERVICE (default ggb-prod-backend)
+#
+# For stronger security, replace the static keys with GitHub OIDC
+# (aws-actions/configure-aws-credentials role-to-assume) — see Phase 9.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to build and deploy"
+        required: false
+        default: "latest"
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'ggb-backend' }}
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'ggb-prod' }}
+  ECS_SERVICE: ${{ vars.ECS_SERVICE || 'ggb-prod-backend' }}
+
+jobs:
+  deploy:
+    name: Build, push, deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push the unified image (UI + API)
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          TAG: ${{ github.event.inputs.image_tag }}
+        run: |
+          IMAGE="$REGISTRY/$ECR_REPOSITORY:$TAG"
+          # Build from the repo root so the frontend is bundled into the image.
+          docker build -f backend/Dockerfile -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Roll the ECS service onto the new image
+        run: |
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --force-new-deployment \
+            --region "$AWS_REGION"
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --region "$AWS_REGION"

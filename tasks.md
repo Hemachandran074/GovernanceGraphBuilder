@@ -94,13 +94,19 @@ Goal: production image parity and reproducible infra.
   Terraform authored (11 files + tfvars example + deploy README). NOTE: `terraform validate/plan` pending —
   terraform not installed in this env; requires the deployer's machine + AWS creds (Phase 8)
 
-## Phase 8 — Deploy + validate `[ ]`
+## Phase 8 — Deploy + validate `[~]`
 Goal: live on AWS with all success criteria passing.
 
-- [ ] 8.1 Provision infra + Neo4j Aura
-- [ ] 8.2 GitHub Actions CI/CD (test → build → push ECR → deploy ECS → invalidate CloudFront)
-- [ ] 8.3 Run validation suite against the deployed environment
-- [ ] **Exit check:** public URL live; all success criteria pass in the cloud
+- [x] 8.2 GitHub Actions CI/CD — `ci.yml` (frontend lint/build + backend validation against a Neo4j service),
+  `deploy.yml` (build/push to ECR → roll ECS → build frontend → S3 sync + CloudFront invalidation)
+- [x] 8.3 Validation suite — `backend/scripts/validate.py` (SC1–SC3 + bonus + drift against any `BASE_URL`);
+  **22/22 checks pass** against the local stack; runs in CI and as a post-deploy smoke test
+- [x] 8.4 Deployment architecture — **unified container (Strategy 1)**: FastAPI serves the built SPA (same origin,
+  no CORS); CloudFront/S3 made optional (`enable_frontend_cdn`, default off) to sidestep the new-account CloudFront
+  gate. Unified image built + run + verified over HTTP (UI at `/`, SPA fallback, API at `/health`/`/docs`/`/graph/*`);
+  local dev + the 22-check validation suite remain unaffected
+- [ ] 8.1 Provision infra + Neo4j Aura — *requires the deployer's AWS account* (`terraform apply`, in progress)
+- [ ] **Exit check:** public URL live; validation suite green in the cloud (pending `terraform apply` on AWS)
 
 ## Phase 9 — Hardening (stretch) `[ ]`
 - [ ] 9.1 API auth (API key / JWT)

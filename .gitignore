@@ -35,3 +35,10 @@ override.tf.json
 Thumbs.db
 *.swp
 .idea/
+
+customer-support-agent.yaml
+text.yaml
+plan.md
+tasks.md
+instruction.md
+backend/scripts/

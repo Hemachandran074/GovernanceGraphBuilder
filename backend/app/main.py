@@ -10,12 +10,13 @@ import logging
 import time
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncIterator
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import __version__
@@ -61,6 +62,28 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     finally:
         await client.close()
         logger.info("Application shutdown complete")
+
+
+def _serve_frontend(app: FastAPI, static_root: Path) -> None:
+    """Serve the built SPA from this service (Strategy 1: unified container).
+
+    Registered after the API routers and the OpenAPI docs, so those take
+    precedence. Existing build files are served directly (with long-cache
+    headers for hashed assets); any other path returns index.html so client-side
+    routing works.
+    """
+    index_file = static_root / "index.html"
+    root_str = str(static_root.resolve())
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str) -> FileResponse:
+        target = (static_root / full_path).resolve()
+        # Serve a real build asset when it exists; guard against path traversal
+        # by requiring the resolved path to stay within the static root.
+        if full_path and str(target).startswith(root_str) and target.is_file():
+            cache = "public, max-age=31536000, immutable" if full_path.startswith("assets/") else "no-cache"
+            return FileResponse(target, headers={"Cache-Control": cache})
+        return FileResponse(index_file, headers={"Cache-Control": "no-cache"})
 
 
 def create_app() -> FastAPI:
@@ -154,15 +177,23 @@ def create_app() -> FastAPI:
     app.include_router(query.router)
     app.include_router(graph.router)
 
-    @app.get("/", tags=["meta"], summary="Service metadata")
-    async def root() -> dict[str, str]:
-        return {
-            "service": settings.app_name,
-            "version": __version__,
-            "docs": "/docs",
-            "health": "/health",
-            "ready": "/ready",
-        }
+    # Serve the built SPA from this service when a build is present (production
+    # unified container). With no build (local dev / tests), expose the JSON
+    # service-metadata root instead so the API runs standalone.
+    static_root = Path(__file__).resolve().parent.parent / settings.static_dir
+    if settings.serve_frontend and (static_root / "index.html").is_file():
+        _serve_frontend(app, static_root)
+    else:
+
+        @app.get("/", tags=["meta"], summary="Service metadata")
+        async def root() -> dict[str, str]:
+            return {
+                "service": settings.app_name,
+                "version": __version__,
+                "docs": "/docs",
+                "health": "/health",
+                "ready": "/ready",
+            }
 
     return app
 

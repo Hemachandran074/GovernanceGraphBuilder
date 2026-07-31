@@ -22,6 +22,7 @@ from typing import Any
 
 from app.graph.client import Neo4jClient
 from app.graph.loader import load_document
+from app.llm.heuristic import HeuristicPolicyExtractor
 from app.llm.provider import LLMProvider, PolicyExtraction, get_llm_provider
 from app.models.edges import Edge, RelType
 from app.models.graph import GraphDocument
@@ -118,18 +119,51 @@ async def ingest_policy_document(
     document_text: str,
     provider: LLMProvider | None = None,
 ) -> dict[str, Any]:
-    """Parse a policy document with the LLM provider and load it into the graph."""
+    """Parse a policy document with the LLM provider and load it into the graph.
+
+    The real LLM call can fail at runtime for reasons the provider's
+    ``is_available()`` probe cannot see: the model may not be enabled for the
+    account/region, the task role may lack ``bedrock:InvokeModel``, the request
+    may be throttled, or the network may blip. Rather than failing the whole
+    ingest with a 500, fall back to the deterministic offline heuristic so
+    ingestion always succeeds. The response reports the provider that actually
+    produced the result (and the fallback reason, when one occurred).
+    """
     provider = provider or get_llm_provider()
     name_to_node, agents, entities = await _load_vocabulary(client)
 
-    extraction = provider.extract_policies(
-        document_text, known_agents=agents, known_entities=entities
-    )
+    provider_used = provider.name
+    fallback_reason: str | None = None
+    try:
+        extraction = provider.extract_policies(
+            document_text, known_agents=agents, known_entities=entities
+        )
+    except Exception as exc:  # noqa: BLE001 - ingestion must not 500 on an LLM error
+        # If the heuristic itself failed there is nothing safer to fall back to.
+        if isinstance(provider, HeuristicPolicyExtractor):
+            raise
+        logger.warning(
+            "LLM provider failed; falling back to heuristic policy extraction",
+            extra={"provider": provider.name, "error": str(exc)},
+        )
+        provider_used = "heuristic"
+        fallback_reason = f"{type(exc).__name__}: {exc}"
+        extraction = HeuristicPolicyExtractor().extract_policies(
+            document_text, known_agents=agents, known_entities=entities
+        )
+
     document = _extraction_to_document(extraction, name_to_node)
     counts = await load_document(client, document)
 
     logger.info(
         "Ingested policy document",
-        extra={"provider": provider.name, "policies": len(extraction.policies)},
+        extra={"provider": provider_used, "policies": len(extraction.policies)},
     )
-    return {"provider": provider.name, "policies_extracted": len(extraction.policies), **counts}
+    result: dict[str, Any] = {
+        "provider": provider_used,
+        "policies_extracted": len(extraction.policies),
+        **counts,
+    }
+    if fallback_reason:
+        result["llm_fallback"] = fallback_reason
+    return result

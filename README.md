@@ -291,13 +291,19 @@ The frontend reads `VITE_API_BASE_URL` (default `http://localhost:8000`); see `f
 
 ## Deployment (AWS)
 
-The `infra/terraform/` directory provisions a production-shaped stack:
+The `infra/terraform/` directory provisions a production-shaped stack. The default
+deployment is a **unified container**: one ECS service runs FastAPI, which also
+serves the built React SPA — so the UI and API share a single origin and URL
+(no CORS, no separate frontend host).
 
-- **ECR** for the backend image
+- **ECR** for the unified image
 - **VPC** (public + private subnets, NAT)
-- **ECS Fargate + ALB** for the API, with CPU-based autoscaling
-- **S3 + CloudFront** (Origin Access Control) for the frontend
+- **ECS Fargate + ALB** serving both the UI and API, with CPU-based autoscaling
 - **Secrets Manager** for Neo4j credentials, **IAM** roles (execution + Bedrock task role), and **CloudWatch Logs**
+- **S3 + CloudFront** — *optional* separate frontend CDN (`enable_frontend_cdn`, off by default)
+
+The unified image is built from the repo root (`docker build -f backend/Dockerfile .`);
+the frontend is compiled in a Node stage and served by FastAPI at `/`.
 
 ```mermaid
 flowchart TB

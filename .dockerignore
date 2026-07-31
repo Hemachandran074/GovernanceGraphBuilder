@@ -1,0 +1,21 @@
+# Keep the build context small when building the unified image from the repo root.
+# NOTE: do NOT exclude backend/samples (needed at runtime) or *.md broadly
+# (sample policy docs are policy.md files).
+.git/
+.github/
+infra/
+backend/.venv/
+backend/static/
+backend/tests/
+frontend/node_modules/
+frontend/dist/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.env
+plan.md
+tasks.md
+problem_statement.md
+instruction.md

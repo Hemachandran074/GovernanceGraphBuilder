@@ -1,12 +1,26 @@
+# Optional separate frontend hosting (S3 + CloudFront).
+#
+# Strategy 1 (the default) serves the SPA from the API container, so these
+# resources are disabled unless `enable_frontend_cdn = true`. Enabling requires
+# a CloudFront-verified AWS account.
+
 data "aws_caller_identity" "current" {}
+
+locals {
+  cdn_count = var.enable_frontend_cdn ? 1 : 0
+}
 
 # Private bucket holding the built SPA; only CloudFront may read it.
 resource "aws_s3_bucket" "frontend" {
+  count  = local.cdn_count
   bucket = "${local.name}-frontend-${data.aws_caller_identity.current.account_id}"
+  # Allow teardown even when the bucket still holds built assets.
+  force_destroy = true
 }
 
 resource "aws_s3_bucket_public_access_block" "frontend" {
-  bucket                  = aws_s3_bucket.frontend.id
+  count                   = local.cdn_count
+  bucket                  = aws_s3_bucket.frontend[0].id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -14,6 +28,7 @@ resource "aws_s3_bucket_public_access_block" "frontend" {
 }
 
 resource "aws_cloudfront_origin_access_control" "frontend" {
+  count                             = local.cdn_count
   name                              = "${local.name}-frontend-oac"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
@@ -21,15 +36,16 @@ resource "aws_cloudfront_origin_access_control" "frontend" {
 }
 
 resource "aws_cloudfront_distribution" "frontend" {
+  count               = local.cdn_count
   enabled             = true
   default_root_object = "index.html"
   comment             = "${local.name} frontend"
   price_class         = "PriceClass_100"
 
   origin {
-    domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
+    domain_name              = aws_s3_bucket.frontend[0].bucket_regional_domain_name
     origin_id                = "s3-frontend"
-    origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
+    origin_access_control_id = aws_cloudfront_origin_access_control.frontend[0].id
   }
 
   default_cache_behavior {
@@ -79,9 +95,11 @@ resource "aws_cloudfront_distribution" "frontend" {
 
 # Allow only this CloudFront distribution to read the bucket (via OAC).
 data "aws_iam_policy_document" "frontend_bucket" {
+  count = local.cdn_count
+
   statement {
     actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.frontend.arn}/*"]
+    resources = ["${aws_s3_bucket.frontend[0].arn}/*"]
 
     principals {
       type        = "Service"
@@ -91,12 +109,13 @@ data "aws_iam_policy_document" "frontend_bucket" {
     condition {
       test     = "StringEquals"
       variable = "AWS:SourceArn"
-      values   = [aws_cloudfront_distribution.frontend.arn]
+      values   = [aws_cloudfront_distribution.frontend[0].arn]
     }
   }
 }
 
 resource "aws_s3_bucket_policy" "frontend" {
-  bucket = aws_s3_bucket.frontend.id
-  policy = data.aws_iam_policy_document.frontend_bucket.json
+  count  = local.cdn_count
+  bucket = aws_s3_bucket.frontend[0].id
+  policy = data.aws_iam_policy_document.frontend_bucket[0].json
 }

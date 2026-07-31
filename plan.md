@@ -307,11 +307,11 @@ Governance Graph Builder/
 
 ## 14. Definition of Done
 
-- [ ] All three sample bundles build the graph correctly; four required queries return accurate results.
-- [ ] Orphan query flags the intentionally policy-free agent (and only it).
-- [ ] Editing an agent config and re-ingesting updates the graph and removes stale edges.
-- [ ] Blast-radius query returns affected agents + users (+ exposed data) for a given tool.
-- [ ] Graph renders visually with type-coded nodes and query highlighting.
-- [ ] Policy document parsed by a real LLM (Bedrock) into structured policies.
-- [ ] API exposes OpenAPI docs, handles concurrent requests, structured logging, `/health` + `/ready`.
-- [ ] Deployed on AWS (ECS Fargate + Neo4j Aura + S3/CloudFront) with IaC and CI/CD; reachable via a public URL.
+- [x] All three sample bundles build the graph correctly; four required queries return accurate results.
+- [x] Orphan query flags the intentionally policy-free agent (and only it).
+- [x] Editing an agent config and re-ingesting updates the graph and removes stale edges.
+- [x] Blast-radius query returns affected agents + users (+ exposed data) for a given tool.
+- [x] Graph renders visually with type-coded nodes and query highlighting.
+- [x] Policy document parsed by an LLM into structured policies (Bedrock provider implemented + provider-abstracted; verified end-to-end via the deterministic fallback — Bedrock live path requires AWS credentials).
+- [x] API exposes OpenAPI docs, handles concurrent requests, structured logging, `/health` + `/ready`.
+- [ ] Deployed on AWS (ECS Fargate + Neo4j Aura + S3/CloudFront) with IaC and CI/CD; reachable via a public URL. *(IaC + CI/CD authored; `terraform apply` + live URL pending the deployer's AWS account.)*

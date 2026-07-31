@@ -74,9 +74,15 @@ variable "acm_certificate_arn" {
 }
 
 variable "cors_origins" {
-  description = "Comma-separated allowed CORS origins for the API. Set to the CloudFront URL in production instead of '*'."
+  description = "Comma-separated allowed CORS origins for the API. For the unified (Strategy 1) deploy the UI is same-origin, so this can stay restrictive."
   type        = string
   default     = "*"
+}
+
+variable "enable_frontend_cdn" {
+  description = "Provision S3 + CloudFront to host the frontend separately. Strategy 1 serves the SPA from the API container, so this defaults to false. Enabling it requires a CloudFront-verified AWS account."
+  type        = bool
+  default     = false
 }
 
 # --- Neo4j (managed, e.g. Neo4j Aura) ---

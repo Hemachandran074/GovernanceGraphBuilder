@@ -36,7 +36,10 @@ class Settings(BaseSettings):
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_user: str = "neo4j"
     neo4j_password: str = "localdevpassword"
-    neo4j_database: str = "neo4j"
+    # Database name. Leave empty/None to use the server's home database. A
+    # managed instance (e.g. Neo4j Aura) may not have a database literally named
+    # "neo4j", so forcing that name breaks routing; None resolves the home db.
+    neo4j_database: str | None = None
     # Seconds to wait when verifying connectivity for readiness checks.
     neo4j_connection_timeout: float = 5.0
 
@@ -54,6 +57,12 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-3-5-sonnet-20241022"
+
+    # --- Frontend (Strategy 1: unified container serving the built SPA) ---
+    # When enabled AND a build exists at `static_dir`, FastAPI serves the SPA
+    # at "/". With no build present (local dev, tests), the API runs on its own.
+    serve_frontend: bool = True
+    static_dir: str = "static"
 
     @property
     def cors_origins_list(self) -> list[str]:

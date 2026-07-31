@@ -23,7 +23,14 @@ class Neo4jClient:
     def __init__(self, settings: Settings) -> None:
         self._uri = settings.neo4j_uri
         self._auth = (settings.neo4j_user, settings.neo4j_password)
-        self._database = settings.neo4j_database
+        # An empty/blank database name means "use the server's home database".
+        # This must be passed to the driver as None (not ""): on a routed
+        # connection (neo4j+s:// / Aura) an empty string, or a name that does
+        # not exist on the instance, fails routing with SessionExpired /
+        # DatabaseNotFound even though verify_connectivity() still succeeds.
+        # None lets the driver resolve the home database, which works on both
+        # Aura and a local single-instance Neo4j.
+        self._database = (settings.neo4j_database or "").strip() or None
         self._timeout = settings.neo4j_connection_timeout
         self._driver: AsyncDriver | None = None
 

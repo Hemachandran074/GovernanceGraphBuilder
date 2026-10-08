@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     # --- HTTP / CORS ---
     # Comma-separated list of allowed origins for the browser frontend.
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
+    # Optional regex to match allowed origins (e.g. all Vercel production and preview deployments)
+    cors_origin_regex: str | None = r"^https:\/\/.*\.vercel\.app$"
 
     # --- Neo4j ---
     neo4j_uri: str = "bolt://localhost:7687"

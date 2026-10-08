@@ -48,11 +48,8 @@ EXPOSE 8000
 
 # Container-level liveness check (curl isn't in the slim image, so use Python).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
-  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"
+  CMD python -c "import os,urllib.request,sys; port=os.environ.get('PORT', '8000'); sys.exit(0 if urllib.request.urlopen(f'http://localhost:{port}/health').status==200 else 1)"
 
 # Gunicorn manages multiple Uvicorn workers for concurrent request handling.
-CMD ["gunicorn", "app.main:app", \
-     "-k", "uvicorn.workers.UvicornWorker", \
-     "-b", "0.0.0.0:8000", \
-     "-w", "2", \
-     "--error-logfile", "-"]
+# Dynamically binds to $PORT (allocated by platforms like Render) or defaults to 8000.
+CMD ["sh", "-c", "exec gunicorn app.main:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT:-8000} -w 2 --error-logfile -"]
